@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Search Puzzle</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f1e8;
+    color: #222;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    overflow: hidden;
+}
+
+.game {
+    width: 95vw;
+    height: 96vh;
+    max-width: 650px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+}
+
+/* TITLE */
+
+h1 {
+    margin: 0 0 3px;
+    font-size: clamp(24px, 5vh, 40px);
+    letter-spacing: 3px;
+}
+
+.subtitle {
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #666;
+}
+
+
+/* 12 x 12 GRID */
+
+#board {
+    width: min(52vh, 88vw);
+    height: min(52vh, 88vw);
+
+    display: grid;
+
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: repeat(12, 1fr);
+
+    gap: 1px;
+
+    background: #222;
+    border: 3px solid #222;
+
+    touch-action: none;
+}
+
+.cell {
+    background: white;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: clamp(12px, 2.6vh, 23px);
+    font-weight: 900;
+
+    cursor: pointer;
+}
+
+.cell.preview {
+    background: #ffd166;
+}
+
+.cell.found {
+    background: #55c98a;
+    color: #073b20;
+}
+
+
+/* WORD LIST */
+
+.words-title {
+    margin: 7px 0 4px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+#wordList {
+    width: min(52vh, 88vw);
+
+    display: grid;
+
+    grid-template-columns: repeat(5, 1fr);
+
+    gap: 4px;
+
+    margin-bottom: 7px;
+}
+
+.word {
+    background: #ddd;
+
+    padding: 4px 2px;
+
+    border-radius: 5px;
+
+    font-size: 11px;
+    font-weight: bold;
+
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.word.found {
+    background: #55c98a;
+    color: #073b20;
+
+    text-decoration: line-through;
+}
+
+
+/* BUTTON */
+
+button {
+    border: none;
+
+    background: #222;
+    color: white;
+
+    padding: 8px 18px;
+
+    border-radius: 6px;
+
+    font-size: 14px;
+    font-weight: bold;
+
+    cursor: pointer;
+}
+
+button:hover {
+    background: #444;
+}
+
+
+/* MESSAGE */
+
+#message {
+    min-height: 20px;
+
+    margin-top: 5px;
+
+    font-size: 14px;
+    font-weight: bold;
+
+    color: #d35400;
+}
+
+
+/* SMALL MONITORS */
+
+@media (max-height: 650px) {
+
+    h1 {
+        font-size: 26px;
+    }
+
+    .subtitle {
+        margin-bottom: 4px;
+        font-size: 11px;
+    }
+
+    #board {
+        width: min(46vh, 80vw);
+        height: min(46vh, 80vw);
+    }
+
+    .words-title {
+        margin-top: 4px;
+        margin-bottom: 3px;
+        font-size: 15px;
+    }
+
+    #wordList {
+        width: min(46vh, 80vw);
+        gap: 2px;
+        margin-bottom: 4px;
+    }
+
+    .word {
+        padding: 3px 1px;
+        font-size: 9px;
+    }
+
+    button {
+        padding: 5px 14px;
+        font-size: 12px;
+    }
+
+    #message {
+        font-size: 11px;
+        margin-top: 3px;
+    }
+}
+
+
+/* PHONE */
+
+@media (max-width: 500px) {
+
+    body {
+        overflow: auto;
+        align-items: flex-start;
+    }
+
+    .game {
+        height: auto;
+        min-height: 100vh;
+        padding: 10px 0;
+    }
+
+    #board {
+        width: 94vw;
+        height: 94vw;
+    }
+
+    #wordList {
+        width: 94vw;
+    }
+}
+</style>
+</head>
+
+
+<body>
+
+<div class="game">
+
+    <h1>WORD SEARCH</h1>
+
+    <div class="subtitle">
+        Find all 15 hidden words!
+    </div>
+
+    <div id="board"></div>
+
+    <div class="words-title">
+        WORDS TO FIND
+    </div>
+
+    <div id="wordList"></div>
+
+    <button id="newPuzzleButton">
+        🔄 NEW PUZZLE
+    </button>
+
+    <div id="message">
+        Find all 15 hidden words!
+    </div>
+
+</div>
+
+
+<script>
+
+/* ==================================================
+   GAME SETTINGS
+================================================== */
+
+const SIZE = 12;
+
+const NUMBER_OF_WORDS = 15;
+
+
+/* ==================================================
+   LARGE WORD BANK
+
+   15 words are randomly chosen from this list
+   every time NEW PUZZLE is clicked.
+================================================== */
+
+const WORD_BANK = [
+
+    "APPLE",
+    "BANANA",
+    "ORANGE",
+    "GRAPE",
+    "LEMON",
+    "MANGO",
+    "CHERRY",
+    "PEACH",
+    "MELON",
+    "STRAWBERRY",
+    "PINEAPPLE",
+    "COCONUT",
+    "BLUEBERRY",
+    "KIWI",
+    "PAPAYA",
+
+    "CAR",
+    "TRUCK",
+    "TRAIN",
+    "PLANE",
+    "BOAT",
+    "BIKE",
+    "BUS",
+    "ROCKET",
+    "SCOOTER",
+    "SUBWAY",
+
+    "HOUSE",
+    "SCHOOL",
+    "GARDEN",
+    "WINDOW",
+    "DOOR",
+    "CHAIR",
+    "TABLE",
+    "PENCIL",
+    "PAPER",
+    "BOOK",
+
+    "SUN",
+    "MOON",
+    "STAR",
+    "CLOUD",
+    "RAIN",
+    "SNOW",
+    "WIND",
+    "STORM",
+    "THUNDER",
+    "RAINBOW",
+
+    "TIGER",
+    "LION",
+    "BEAR",
+    "WOLF",
+    "HORSE",
+    "ZEBRA",
+    "MONKEY",
+    "RABBIT",
+    "PANDA",
+    "ELEPHANT",
+
+    "MUSIC",
+    "GUITAR",
+    "PIANO",
+    "DRUM",
+    "SINGER",
+    "DANCE",
+    "MOVIE",
+    "CAMERA",
+    "GAME",
+    "SPORT",
+
+    "SUMMER",
+    "WINTER",
+    "SPRING",
+    "AUTUMN",
+    "HOLIDAY",
+    "TRAVEL",
+    "BEACH",
+    "MOUNTAIN",
+    "FOREST",
+    "ISLAND",
+
+    "PIZZA",
+    "BURGER",
+    "CHEESE",
+    "COOKIE",
+    "CAKE",
+    "BREAD",
+    "CHOCOLATE",
+    "CANDY",
+    "SALAD",
+    "PASTA"
+
+];
+
+
+/* ==================================================
+   DIRECTIONS
+================================================== */
+
+const DIRECTIONS = [
+
+    [0, 1],
+    [0, -1],
+
+    [1, 0],
+    [-1, 0],
+
+    [1, 1],
+    [1, -1],
+
+    [-1, 1],
+    [-1, -1]
+
+];
+
+
+/* ==================================================
+   VARIABLES
+================================================== */
+
+let board = [];
+
+let currentWords = [];
+
+let placedWords = [];
+
+let foundWords = new Set();
+
+let dragging = false;
+
+let startCell = null;
+
+let selectedCells = [];
+
+
+/* ==================================================
+   ELEMENTS
+================================================== */
+
+const boardElement =
+    document.getElementById("board");
+
+const wordListElement =
+    document.getElementById("wordList");
+
+const messageElement =
+    document.getElementById("message");
+
+const newPuzzleButton =
+    document.getElementById("newPuzzleButton");
+
+
+/* ==================================================
+   RANDOMLY SELECT 15 WORDS
+================================================== */
+
+function chooseRandomWords() {
+
+    /*
+       Make a copy of the entire word bank.
+    */
+
+    const available =
+        [...WORD_BANK];
+
+
+    /*
+       Shuffle the word bank.
+    */
+
+    for (
+        let i = available.length - 1;
+        i > 0;
+        i--
+    ) {
+
+        const j =
+            Math.floor(
+                Math.random() * (i + 1)
+            );
+
+        [
+            available[i],
+            available[j]
+        ] =
+        [
+            available[j],
+            available[i]
+        ];
+    }
+
+
+    /*
+       Take exactly 15 words.
+    */
+
+    currentWords =
+        available.slice(
+            0,
+            NUMBER_OF_WORDS
+        );
+}
+
+
+/* ==================================================
+   CREATE EMPTY BOARD
+================================================== */
+
+function createEmptyBoard() {
+
+    board = [];
+
+    for (
+        let row = 0;
+        row < SIZE;
+        row++
+    ) {
+
+        board[row] = [];
+
+        for (
+            let col = 0;
+            col < SIZE;
+            col++
+        ) {
+
+            board[row][col] = "";
+
+        }
+    }
+}
+
+
+/* ==================================================
+   CHECK IF WORD FITS
+================================================== */
+
+function canPlaceWord(
+    word,
+    row,
+    col,
+    direction
+) {
+
+    const dr = direction[0];
+
+    const dc = direction[1];
+
+
+    for (
+        let i = 0;
+        i < word.length;
+        i++
+    ) {
+
+        const r =
+            row + dr * i;
+
+        const c =
+            col + dc * i;
+
+
+        /*
+           Word must stay inside
+           the 12 x 12 grid.
+        */
+
+        if (
+            r < 0 ||
+            r >= SIZE ||
+            c < 0 ||
+            c >= SIZE
+        ) {
+
+            return false;
+
+        }
+
+
+        /*
+           Existing letters may overlap
+           only when they are the same.
+        */
+
+        if (
+            board[r][c] !== "" &&
+            board[r][c] !== word[i]
+        ) {
+
+            return false;
+
+        }
+    }
+
+
+    return true;
+}
+
+
+/* ==================================================
+   PLACE WORD RANDOMLY
+================================================== */
+
+function placeWord(word) {
+
+    for (
+        let attempt = 0;
+        attempt < 5000;
+        attempt++
+    ) {
+
+        const row =
+            Math.floor(
+                Math.random() * SIZE
+            );
+
+        const col =
+            Math.floor(
+                Math.random() * SIZE
+            );
+
+
+        const direction =
+            DIRECTIONS[
+                Math.floor(
+                    Math.random() *
+                    DIRECTIONS.length
+                )
+            ];
+
+
+        if (
+            canPlaceWord(
+                word,
+                row,
+                col,
+                direction
+            )
+        ) {
+
+            const cells = [];
+
+
+            for (
+                let i = 0;
+                i < word.length;
+                i++
+            ) {
+
+                const r =
+                    row +
+                    direction[0] * i;
+
+                const c =
+                    col +
+                    direction[1] * i;
+
+
+                board[r][c] =
+                    word[i];
+
+
+                cells.push({
+
+                    row: r,
+
+                    col: c
+
+                });
+
+            }
+
+
+            placedWords.push({
+
+                word: word,
+
+                cells: cells
+
+            });
+
+
+            return true;
+        }
+    }
+
+
+    return false;
+}
+
+
+/* ==================================================
+   FILL EMPTY CELLS WITH RANDOM LETTERS
+================================================== */
+
+function fillEmptySpaces() {
+
+    const alphabet =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+
+    for (
+        let row = 0;
+        row < SIZE;
+        row++
+    ) {
+
+        for (
+            let col = 0;
+            col < SIZE;
+            col++
+        ) {
+
+            if (
+                board[row][col] === ""
+            ) {
+
+                board[row][col] =
+                    alphabet[
+                        Math.floor(
+                            Math.random() *
+                            alphabet.length
+                        )
+                    ];
+
+            }
+        }
+    }
+}
+
+
+/* ==================================================
+   DRAW THE GRID
+================================================== */
+
+function displayBoard() {
+
+    boardElement.innerHTML = "";
+
+
+    for (
+        let row = 0;
+        row < SIZE;
+        row++
+    ) {
+
+        for (
+            let col = 0;
+            col < SIZE;
+            col++
+        ) {
+
+            const cell =
+                document.createElement(
+                    "div"
+                );
+
+
+            cell.className =
+                "cell";
+
+
+            cell.textContent =
+                board[row][col];
+
+
+            cell.dataset.row =
+                row;
+
+            cell.dataset.col =
+                col;
+
+
+            cell.addEventListener(
+                "pointerdown",
+                beginSelection
+            );
+
+
+            cell.addEventListener(
+                "pointerenter",
+                moveSelection
+            );
+
+
+            boardElement.appendChild(
+                cell
+            );
+
+        }
+    }
+}
+
+
+/* ==================================================
+   DISPLAY THE RANDOM 15 WORDS
+================================================== */
+
+function displayWords() {
+
+    wordListElement.innerHTML = "";
+
+
+    currentWords.forEach(
+        word => {
+
+            const element =
+                document.createElement(
+                    "div"
+                );
+
+
+            element.className =
+                "word";
+
+
+            element.id =
+                "word-" + word;
+
+
+            element.textContent =
+                word;
+
+
+            wordListElement.appendChild(
+                element
+            );
+
+        }
+    );
+}
+
+
+/* ==================================================
+   GET A CELL
+================================================== */
+
+function getCell(
+    row,
+    col
+) {
+
+    return document.querySelector(
+        `.cell[data-row="${row}"][data-col="${col}"]`
+    );
+}
+
+
+/* ==================================================
+   START SELECTING
+================================================== */
+
+function beginSelection(event) {
+
+    dragging = true;
+
+
+    startCell = {
+
+        row:
+            Number(
+                event.currentTarget.dataset.row
+            ),
+
+        col:
+            Number(
+                event.currentTarget.dataset.col
+            )
+
+    };
+
+
+    selectedCells = [
+        startCell
+    ];
+
+
+    clearPreview();
+
+    showPreview();
+
+
+    try {
+
+        event.currentTarget.setPointerCapture(
+            event.pointerId
+        );
+
+    } catch (error) {}
+
+}
+
+
+/* ==================================================
+   DRAG OVER LETTERS
+================================================== */
+
+function moveSelection(event) {
+
+    if (!dragging) {
+        return;
+    }
+
+
+    const endCell = {
+
+        row:
+            Number(
+                event.currentTarget.dataset.row
+            ),
+
+        col:
+            Number(
+                event.currentTarget.dataset.col
+            )
+
+    };
+
+
+    const line =
+        createLine(
+            startCell,
+            endCell
+        );
+
+
+    if (line === null) {
+        return;
+    }
+
+
+    selectedCells =
+        line;
+
+
+    clearPreview();
+
+    showPreview();
+}
+
+
+/* ==================================================
+   CREATE STRAIGHT LINE
+================================================== */
+
+function createLine(
+    start,
+    end
+) {
+
+    const rowDiff =
+        end.row -
+        start.row;
+
+    const colDiff =
+        end.col -
+        start.col;
+
+
+    const horizontal =
+        rowDiff === 0;
+
+    const vertical =
+        colDiff === 0;
+
+    const diagonal =
+        Math.abs(rowDiff) ===
+        Math.abs(colDiff);
+
+
+    if (
+        !horizontal &&
+        !vertical &&
+        !diagonal
+    ) {
+
+        return null;
+
+    }
+
+
+    const rowStep =
+        rowDiff === 0
+            ? 0
+            : rowDiff > 0
+                ? 1
+                : -1;
+
+
+    const colStep =
+        colDiff === 0
+            ? 0
+            : colDiff > 0
+                ? 1
+                : -1;
+
+
+    const length =
+        Math.max(
+            Math.abs(rowDiff),
+            Math.abs(colDiff)
+        ) + 1;
+
+
+    const result = [];
+
+
+    for (
+        let i = 0;
+        i < length;
+        i++
+    ) {
+
+        result.push({
+
+            row:
+                start.row +
+                rowStep * i,
+
+            col:
+                start.col +
+                colStep * i
+
+        });
+
+    }
+
+
+    return result;
+}
+
+
+/* ==================================================
+   SHOW CURRENT SELECTION
+================================================== */
+
+function showPreview() {
+
+    selectedCells.forEach(
+        cell => {
+
+            const element =
+                getCell(
+                    cell.row,
+                    cell.col
+                );
+
+
+            if (element) {
+
+                element.classList.add(
+                    "preview"
+                );
+
+            }
+
+        }
+    );
+}
+
+
+/* ==================================================
+   CLEAR CURRENT SELECTION
+================================================== */
+
+function clearPreview() {
+
+    document
+        .querySelectorAll(
+            ".cell.preview"
+        )
+        .forEach(
+            cell => {
+
+                cell.classList.remove(
+                    "preview"
+                );
+
+            }
+        );
+}
+
+
+/* ==================================================
+   FINISH SELECTION
+================================================== */
+
+document.addEventListener(
+    "pointerup",
+    finishSelection
+);
+
+
+function finishSelection() {
+
+    if (!dragging) {
+        return;
+    }
+
+
+    dragging = false;
+
+
+    clearPreview();
+
+
+    if (
+        selectedCells.length < 2
+    ) {
+
+        selectedCells = [];
+
+        return;
+
+    }
+
+
+    /*
+       Read the selected letters.
+    */
+
+    const selectedWord =
+        selectedCells
+            .map(
+                cell =>
+                    board[
+                        cell.row
+                    ][
+                        cell.col
+                    ]
+            )
+            .join("");
+
+
+    /*
+       Also check the reverse direction.
+    */
+
+    const backwards =
+        selectedWord
+            .split("")
+            .reverse()
+            .join("");
+
+
+    /*
+       Find matching word.
+    */
+
+    const match =
+        placedWords.find(
+            item =>
+
+                !foundWords.has(
+                    item.word
+                )
+
+                &&
+
+                (
+                    item.word ===
+                    selectedWord
+
+                    ||
+
+                    item.word ===
+                    backwards
+                )
+        );
+
+
+    /* ==========================
+       CORRECT WORD
+    ========================== */
+
+    if (match) {
+
+        foundWords.add(
+            match.word
+        );
+
+
+        /*
+           Highlight the hidden word.
+        */
+
+        match.cells.forEach(
+            cell => {
+
+                const element =
+                    getCell(
+                        cell.row,
+                        cell.col
+                    );
+
+
+                if (element) {
+
+                    element.classList.add(
+                        "found"
+                    );
+
+                }
+
+            }
+        );
+
+
+        /*
+           Cross word off the list.
+        */
+
+        const wordElement =
+            document.getElementById(
+                "word-" +
+                match.word
+            );
+
+
+        if (wordElement) {
+
+            wordElement.classList.add(
+                "found"
+            );
+
+        }
+
+
+        if (
+            foundWords.size ===
+            currentWords.length
+        ) {
+
+            messageElement.textContent =
+                "🎉 YOU FOUND ALL 15 WORDS!";
+
+        } else {
+
+            messageElement.textContent =
+                "✓ " +
+                match.word +
+                " FOUND!";
+
+        }
+
+
+    } else {
+
+        messageElement.textContent =
+            "Not a hidden word. Try again!";
+
+    }
+
+
+    selectedCells = [];
+}
+
+
+/* ==================================================
+   CREATE NEW PUZZLE
+================================================== */
+
+function newGame() {
+
+    /*
+       Choose 15 completely new/random
+       words from the word bank.
+    */
+
+    chooseRandomWords();
+
+
+    /*
+       Reset puzzle.
+    */
+
+    createEmptyBoard();
+
+    placedWords = [];
+
+    foundWords = new Set();
+
+
+    /*
+       Put longest words first.
+       This helps all 15 words fit.
+    */
+
+    const wordsToPlace =
+        [...currentWords].sort(
+            (a, b) =>
+                b.length - a.length ||
+                Math.random() - 0.5
+        );
+
+
+    /*
+       Place every selected word
+       at a random position.
+    */
+
+    wordsToPlace.forEach(
+        word => {
+
+            placeWord(word);
+
+        }
+    );
+
+
+    /*
+       Fill remaining squares.
+    */
+
+    fillEmptySpaces();
+
+
+    /*
+       Display everything.
+    */
+
+    displayBoard();
+
+    displayWords();
+
+
+    messageElement.textContent =
+        "Find all 15 hidden words!";
+}
+
+
+/* ==================================================
+   NEW PUZZLE BUTTON
+================================================== */
+
+newPuzzleButton.addEventListener(
+    "click",
+    newGame
+);
+
+
+/* ==================================================
+   START GAME
+================================================== */
+
+newGame();
+
+</script>
+
+</body>
+</html>
